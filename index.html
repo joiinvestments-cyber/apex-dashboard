@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apex Agent Dashboard</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: #f5f5f5; color: #111; min-height: 100vh; padding: 24px 16px; }
+  .wrap { max-width: 920px; margin: 0 auto; }
+
+  .header { background: #0C447C; border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .header-logo { font-size: 22px; font-weight: 700; color: #fff; letter-spacing: -.5px; }
+  .header-sub { font-size: 13px; color: #B5D4F4; margin-top: 2px; }
+  .header-spacer { flex: 1; }
+  .header-tag { font-size: 11px; background: rgba(255,255,255,.15); color: #fff; padding: 4px 10px; border-radius: 6px; }
+
+  .agent-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; background: #E6F1FB; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; color: #0C447C; flex-shrink: 0; border: 2px solid #B5D4F4; }
+  .name-input { font-size: 18px; font-weight: 600; color: #111; background: transparent; border: none; outline: none; border-bottom: 2px solid #ddd; padding-bottom: 2px; width: 210px; font-family: inherit; }
+  .name-input:focus { border-bottom-color: #378ADD; }
+  .spacer { flex: 1; }
+  .tab-group { display: flex; border: 1px solid #ccc; border-radius: 8px; overflow: hidden; }
+  .tab { padding: 7px 16px; font-size: 13px; cursor: pointer; background: #fff; border: none; color: #666; font-family: inherit; }
+  .tab.active { background: #E6F1FB; color: #0C447C; font-weight: 600; }
+
+  .action-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; align-items: center; }
+  .btn { padding: 7px 16px; font-size: 13px; border-radius: 8px; border: 1px solid #ccc; background: #fff; cursor: pointer; color: #333; font-family: inherit; transition: background .15s; }
+  .btn:hover { background: #f0f0f0; }
+  .btn.primary { background: #0C447C; color: #fff; border-color: #0C447C; }
+  .btn.primary:hover { background: #185FA5; }
+  .toast { font-size: 12px; padding: 5px 12px; border-radius: 8px; display: none; font-weight: 500; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 16px 18px; }
+  .sec { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .08em; margin: 0 0 12px; }
+
+  .fr { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .fl { font-size: 13px; color: #555; min-width: 180px; flex-shrink: 0; }
+  .fi { flex: 1; }
+  .fi input[type=number] { width: 100%; padding: 7px 10px; border: 1px solid #ccc; border-radius: 7px; font-size: 14px; font-family: inherit; outline: none; }
+  .fi input[type=number]:focus { border-color: #378ADD; }
+
+  .gc-totals { border-top: 1px solid #eee; padding-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+  .gc-total-item { background: #f5f5f5; border-radius: 8px; padding: 10px 12px; }
+  .gc-total-label { font-size: 11px; color: #888; margin-bottom: 3px; }
+  .gc-total-value { font-size: 17px; font-weight: 700; color: #111; }
+  .gc-total-sub { font-size: 11px; color: #888; margin-top: 2px; }
+  .gc-total-item.accent { background: #E6F1FB; }
+  .gc-total-item.accent .gc-total-label { color: #185FA5; }
+  .gc-total-item.accent .gc-total-value { color: #0C447C; }
+  .gc-split-bar { margin-top: 12px; border-top: 1px solid #eee; padding-top: 12px; }
+  .gc-split-label { font-size: 11px; color: #888; margin-bottom: 6px; }
+  .gc-split-track { height: 10px; border-radius: 5px; overflow: hidden; display: flex; }
+  .gc-split-b { background: #378ADD; height: 100%; border-radius: 5px 0 0 5px; transition: width .3s; }
+  .gc-split-s { background: #639922; height: 100%; border-radius: 0 5px 5px 0; transition: width .3s; }
+  .gc-split-legend { display: flex; gap: 14px; margin-top: 6px; }
+  .gc-leg-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #666; }
+  .gc-leg-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+  .sr { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .sl { font-size: 13px; color: #555; flex: 1; }
+  .sv { font-size: 13px; font-weight: 600; color: #111; min-width: 42px; text-align: right; }
+  input[type=range] { flex: 2; accent-color: #378ADD; cursor: pointer; }
+
+  .mg { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .mc { background: #f5f5f5; border-radius: 8px; padding: 12px 14px; }
+  .ml { font-size: 11px; color: #888; margin-bottom: 4px; }
+  .mv { font-size: 20px; font-weight: 700; color: #111; }
+  .ms { font-size: 11px; color: #888; margin-top: 2px; }
+  .mc.hi { background: #E6F1FB; } .mc.hi .ml { color: #185FA5; } .mc.hi .mv { color: #0C447C; }
+
+  .ytd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .yc { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; }
+  .yl { font-size: 11px; color: #888; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+  .yi { width: 100%; font-size: 20px; font-weight: 700; background: transparent; border: none; outline: none; color: #111; font-family: inherit; }
+
+  .funnel-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+  .fn { font-size: 12px; color: #666; min-width: 160px; }
+  .fb { flex: 1; background: #f0f0f0; border-radius: 4px; height: 26px; overflow: hidden; }
+  .ff { height: 100%; display: flex; align-items: center; padding-left: 10px; font-size: 12px; font-weight: 600; color: #fff; border-radius: 4px; transition: width .35s; }
+  .fct { font-size: 12px; font-weight: 600; color: #555; min-width: 40px; text-align: right; }
+
+  .pace-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 16px 18px; margin-bottom: 18px; }
+  .ph { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .pt { font-size: 15px; font-weight: 700; color: #111; }
+  .pbadge { font-size: 12px; padding: 4px 12px; border-radius: 8px; font-weight: 700; }
+  .pr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .pri { margin-bottom: 4px; }
+  .prl { font-size: 12px; color: #888; margin-bottom: 4px; }
+  .prn { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: #111; margin-bottom: 5px; }
+  .prb { background: #f0f0f0; border-radius: 3px; height: 7px; overflow: hidden; }
+  .prf { height: 100%; border-radius: 3px; transition: width .35s; }
+
+  .tbl-wrap { overflow-x: auto; background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; margin-bottom: 18px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { font-size: 11px; font-weight: 700; color: #888; text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+  td { padding: 8px 12px; color: #111; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  .cur td { background: #EBF4FF; }
+  .cur td:first-child { font-weight: 700; color: #0C447C; }
+
+  .divider { border: none; border-top: 1px solid #eee; margin: 18px 0; }
+  .footer { text-align: center; font-size: 11px; color: #aaa; margin-top: 24px; padding-top: 16px; border-top: 1px solid #eee; }
+  .sec-heading { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .08em; margin: 18px 0 10px; }
+
+  @media(max-width: 600px) {
+    .two-col { grid-template-columns: 1fr; }
+    .pr-grid { grid-template-columns: 1fr; }
+    .fl { min-width: 140px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div>
+      <div class="header-logo">Apex Partners &amp; Co.</div>
+      <div class="header-sub">Agent Performance Dashboard &nbsp;&middot;&nbsp; Apex Real Estate Team</div>
+    </div>
+    <div class="header-spacer"></div>
+    <div class="header-tag">eXp Realty Ohio</div>
+  </div>
+
+  <div class="agent-row">
+    <div class="avatar" id="av">AG</div>
+    <input class="name-input" id="agentName" placeholder="Your name" value="Agent Name" oninput="updateAvatar();autoSave()">
+    <div class="spacer"></div>
+    <div class="tab-group">
+      <button class="tab active" onclick="setView('combined',this)">Combined</button>
+      <button class="tab" onclick="setView('buyer',this)">Buyers</button>
+      <button class="tab" onclick="setView('seller',this)">Sellers</button>
+    </div>
+  </div>
+
+  <div class="action-bar">
+    <button class="btn primary" onclick="saveData()">Save inputs</button>
+    <button class="btn" onclick="loadData()">Load saved</button>
+    <button class="btn" onclick="clearData()">Clear saved</button>
+    <button class="btn" onclick="printSummary()">Print summary</button>
+    <span class="toast" id="toast"></span>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="sec">Goal &amp; commission</div>
+      <div class="fr"><span class="fl">Annual revenue goal ($)</span><div class="fi"><input type="number" id="goal" value="500000" step="50000" oninput="calc()"></div></div>
+      <div class="fr"><span class="fl">Avg commission — buyer ($)</span><div class="fi"><input type="number" id="commB" value="7500" step="500" oninput="calc()"></div></div>
+      <div class="fr"><span class="fl">Avg commission — seller ($)</span><div class="fi"><input type="number" id="commS" value="8500" step="500" oninput="calc()"></div></div>
+
+      <div class="gc-totals">
+        <div class="gc-total-item accent">
+          <div class="gc-total-label">Closings needed</div>
+          <div class="gc-total-value" id="gc-closes">—</div>
+          <div class="gc-total-sub">to hit goal</div>
+        </div>
+        <div class="gc-total-item accent">
+          <div class="gc-total-label">Blended commission</div>
+          <div class="gc-total-value" id="gc-blended">—</div>
+          <div class="gc-total-sub">avg per deal</div>
+        </div>
+        <div class="gc-total-item">
+          <div class="gc-total-label">Buyer closings needed</div>
+          <div class="gc-total-value" id="gc-b-closes">—</div>
+          <div class="gc-total-sub" id="gc-b-rev">—</div>
+        </div>
+        <div class="gc-total-item">
+          <div class="gc-total-label">Seller closings needed</div>
+          <div class="gc-total-value" id="gc-s-closes">—</div>
+          <div class="gc-total-sub" id="gc-s-rev">—</div>
+        </div>
+        <div class="gc-total-item" style="grid-column:1/-1">
+          <div class="gc-total-label">Monthly revenue target</div>
+          <div class="gc-total-value" id="gc-monthly">—</div>
+          <div class="gc-total-sub" id="gc-monthly-closes">—</div>
+        </div>
+      </div>
+
+      <div class="gc-split-bar">
+        <div class="gc-split-label">Deal split — <span id="gc-split-text">—</span></div>
+        <div class="gc-split-track">
+          <div class="gc-split-b" id="splitBarB" style="width:60%"></div>
+          <div class="gc-split-s" id="splitBarS" style="width:40%"></div>
+        </div>
+        <div class="gc-split-legend">
+          <div class="gc-leg-item"><div class="gc-leg-dot" style="background:#378ADD"></div><span id="leg-b">Buyers 60%</span></div>
+          <div class="gc-leg-item"><div class="gc-leg-dot" style="background:#639922"></div><span id="leg-s">Sellers 40%</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec">My conversion rates</div>
+      <div class="sr"><span class="sl">Leads → contacted</span><input type="range" min="5" max="80" step="1" value="40" id="rc" oninput="sync(this,'rcV','%');calc()"><span class="sv" id="rcV">40%</span></div>
+      <div class="sr"><span class="sl">Contacted → appt</span><input type="range" min="5" max="60" step="1" value="25" id="ra" oninput="sync(this,'raV','%');calc()"><span class="sv" id="raV">25%</span></div>
+      <div class="sr"><span class="sl">Appt → contract</span><input type="range" min="5" max="70" step="1" value="40" id="rk" oninput="sync(this,'rkV','%');calc()"><span class="sv" id="rkV">40%</span></div>
+      <div class="sr"><span class="sl">Contract → closed</span><input type="range" min="50" max="100" step="1" value="85" id="rl" oninput="sync(this,'rlV','%');calc()"><span class="sv" id="rlV">85%</span></div>
+      <div class="sr"><span class="sl">Buyer / seller split</span><input type="range" min="10" max="90" step="5" value="60" id="bSplit" oninput="sync(this,'bSplitV','%');calc()"><span class="sv" id="bSplitV">60%</span></div>
+      <div style="font-size:11px;color:#888;margin-top:-6px;padding-left:2px">% of deals that are buyer-side</div>
+    </div>
+  </div>
+
+  <div class="sec-heading">YTD actuals &mdash; <span id="ytd-week-label">week 1 of 52</span></div>
+  <div class="ytd-grid">
+    <div class="yc"><div class="yl">Calls answered</div><input class="yi" type="number" id="ytdCalls" value="0" min="0" oninput="calc()"></div>
+    <div class="yc"><div class="yl">Appointments set</div><input class="yi" type="number" id="ytdAppts" value="0" min="0" oninput="calc()"></div>
+    <div class="yc"><div class="yl">Contracts signed</div><input class="yi" type="number" id="ytdContracts" value="0" min="0" oninput="calc()"></div>
+    <div class="yc"><div class="yl">Closings</div><input class="yi" type="number" id="ytdCloses" value="0" min="0" oninput="calc()"></div>
+    <div class="yc"><div class="yl">Revenue closed ($)</div><input class="yi" type="number" id="ytdRev" value="0" min="0" step="1000" oninput="calc()"></div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="sec-heading">Annual targets to hit goal</div>
+  <div class="mg" id="metricsGrid"></div>
+
+  <div class="sec-heading">Pipeline funnel</div>
+  <div class="card" style="margin-bottom:18px" id="funnel"></div>
+
+  <div class="pace-card">
+    <div class="ph"><span class="pt">Pace tracker</span><span class="pbadge" id="paceBadge">—</span></div>
+    <div class="pr-grid" id="paceRows"></div>
+  </div>
+
+  <div class="sec-heading">Monthly breakdown</div>
+  <div class="tbl-wrap"><table id="monthTable"></table></div>
+
+  <div class="footer">Apex Partners &amp; Co. &nbsp;&middot;&nbsp; Apex Real Estate Team &nbsp;&middot;&nbsp; eXp Realty Ohio &nbsp;&middot;&nbsp; Internal use only</div>
+</div>
+
+<script>
+const SAVE_KEY = 'apex_agent_v3';
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTH_DAYS = [31,28,29,31,30,31,30,31,31,30,31,30,31];
+let currentView = 'combined';
+
+function setView(v, el) {
+  currentView = v;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  calc();
+}
+function sync(el, outId, sfx) { document.getElementById(outId).textContent = el.value + sfx; }
+function updateAvatar() {
+  const n = document.getElementById('agentName').value.trim();
+  document.getElementById('av').textContent = n.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2) || 'AG';
+}
+function fmt(n) { return Math.ceil(n).toLocaleString(); }
+function fmtD(n) { return '$' + Math.round(n).toLocaleString(); }
+function getWeek() {
+  const now = new Date(), s = new Date(now.getFullYear(), 0, 1);
+  return Math.ceil(((now - s) / 86400000 + s.getDay() + 1) / 7);
+}
+function getCurMonth() { return new Date().getMonth(); }
+
+function showToast(msg, bg, color) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.background = bg; t.style.color = color; t.style.display = 'inline-block';
+  setTimeout(() => t.style.display = 'none', 2200);
+}
+
+function saveData() {
+  const fields = ['agentName','goal','commB','commS','rc','ra','rk','rl','bSplit','ytdCalls','ytdAppts','ytdContracts','ytdCloses','ytdRev'];
+  const data = {};
+  fields.forEach(id => { data[id] = document.getElementById(id).value; });
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    showToast('Saved!', '#EAF3DE', '#27500A');
+  } catch(e) { alert('Could not save — browser storage may be restricted.'); }
+}
+function loadData() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) { alert('No saved data found.'); return; }
+    const data = JSON.parse(raw);
+    Object.keys(data).forEach(id => { const el = document.getElementById(id); if (el) el.value = data[id]; });
+    ['rc','ra','rk','rl','bSplit'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) document.getElementById(id + 'V').textContent = el.value + '%';
+    });
+    updateAvatar(); calc();
+    showToast('Loaded!', '#E6F1FB', '#0C447C');
+  } catch(e) { alert('Could not load saved data.'); }
+}
+function clearData() {
+  if (!confirm('Clear all saved data?')) return;
+  try { localStorage.removeItem(SAVE_KEY); } catch(e) {}
+  showToast('Cleared', '#FCEBEB', '#791F1F');
+}
+function autoSave() { try { saveData(); } catch(e) {} }
+
+function printSummary() {
+  const name = document.getElementById('agentName').value || 'Agent';
+  const goal = parseFloat(document.getElementById('goal').value) || 500000;
+  const ytdRev = parseFloat(document.getElementById('ytdRev').value) || 0;
+  const ytdCloses = parseInt(document.getElementById('ytdCloses').value) || 0;
+  const ytdCalls = parseInt(document.getElementById('ytdCalls').value) || 0;
+  const week = getWeek();
+  const paceRev = goal * (week / 52);
+  const revPct = paceRev > 0 ? Math.round((ytdRev / paceRev) * 100) : 0;
+  const contacted = window._contacted || 0, appts = window._appts || 0;
+  const contracts = window._contracts || 0, closes = window._closes || 0;
+  const badgeText = revPct >= 105 ? 'Ahead of pace' : revPct >= 90 ? 'On pace' : revPct >= 70 ? 'Behind pace' : 'Significantly behind';
+  const badgeBg = revPct >= 105 ? '#EAF3DE' : revPct >= 90 ? '#E6F1FB' : revPct >= 70 ? '#FAEEDA' : '#FCEBEB';
+  const badgeColor = revPct >= 105 ? '#27500A' : revPct >= 90 ? '#0C447C' : revPct >= 70 ? '#633806' : '#791F1F';
+  const rows = MONTHS.map((m, i) => {
+    const wf = MONTH_DAYS[i] / 365, isCur = i === getCurMonth();
+    return `<tr style="${isCur ? 'background:#EBF4FF;' : ''}">
+      <td style="font-weight:${isCur ? 700 : 400}">${m}${isCur ? ' ◀' : ''}</td>
+      <td>${Math.ceil(contacted * wf).toLocaleString()}</td>
+      <td>${Math.ceil(appts * wf).toLocaleString()}</td>
+      <td>${Math.ceil(contracts * wf).toLocaleString()}</td>
+      <td>${Math.ceil(closes * wf).toLocaleString()}</td>
+      <td>${fmtD(Math.round(goal * wf))}</td>
+    </tr>`;
+  }).join('');
+  const w = window.open('', '_blank', 'width=760,height=950');
+  w.document.write(`<!DOCTYPE html><html><head><title>Apex — ${name}</title>
+  <style>
+    body{font-family:Arial,sans-serif;padding:36px 44px;color:#111;max-width:700px;margin:0 auto}
+    h1{font-size:20px;color:#0C447C;margin-bottom:2px}
+    .sub{font-size:12px;color:#888;margin-bottom:24px}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+    .box{border:1px solid #ddd;border-radius:8px;padding:12px 14px}
+    .lbl{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+    .val{font-size:20px;font-weight:700;color:#111}
+    .box.hi{background:#E6F1FB;border-color:#B5D4F4}.box.hi .val{color:#0C447C}
+    .badge{display:inline-block;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:700;background:${badgeBg};color:${badgeColor}}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th{background:#f5f5f5;padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#888;border-bottom:1px solid #eee}
+    td{padding:7px 10px;border-bottom:1px solid #f5f5f5}
+    .footer{font-size:10px;color:#aaa;margin-top:24px;border-top:1px solid #eee;padding-top:12px}
+  </style></head><body>
+  <h1>Apex Partners &amp; Co. — Agent Performance Summary</h1>
+  <div class="sub">${name} &nbsp;&middot;&nbsp; ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})} &nbsp;&middot;&nbsp; Week ${week} of 52</div>
+  <div class="grid">
+    <div class="box hi"><div class="lbl">Revenue goal</div><div class="val">${fmtD(goal)}</div></div>
+    <div class="box hi"><div class="lbl">YTD revenue</div><div class="val">${fmtD(ytdRev)}</div></div>
+    <div class="box"><div class="lbl">Pace status</div><div class="val" style="margin-top:4px"><span class="badge">${badgeText}</span></div></div>
+    <div class="box"><div class="lbl">YTD closings</div><div class="val">${ytdCloses}</div></div>
+    <div class="box"><div class="lbl">Calls answered</div><div class="val">${ytdCalls.toLocaleString()}</div></div>
+    <div class="box"><div class="lbl">Remaining needed</div><div class="val">${fmtD(Math.max(0, goal - ytdRev))}</div></div>
+  </div>
+  <table><thead><tr><th>Month</th><th>Target calls</th><th>Target appts</th><th>Target contracts</th><th>Target closings</th><th>Target revenue</th></tr></thead>
+  <tbody>${rows}</tbody></table>
+  <div class="footer">Apex Partners &amp; Co. &nbsp;&middot;&nbsp; Apex Real Estate Team &nbsp;&middot;&nbsp; eXp Realty Ohio &nbsp;&middot;&nbsp; Internal use only</div>
+  </body></html>`);
+  w.document.close();
+  setTimeout(() => w.print(), 400);
+}
+
+function calc() {
+  const goal = parseFloat(document.getElementById('goal').value) || 500000;
+  const commB = parseFloat(document.getElementById('commB').value) || 7500;
+  const commS = parseFloat(document.getElementById('commS').value) || 8500;
+  const rc = parseInt(document.getElementById('rc').value) / 100;
+  const ra = parseInt(document.getElementById('ra').value) / 100;
+  const rk = parseInt(document.getElementById('rk').value) / 100;
+  const rl = parseInt(document.getElementById('rl').value) / 100;
+  const bPct = parseInt(document.getElementById('bSplit').value) / 100;
+  const sPct = 1 - bPct;
+  const ytdCalls = parseInt(document.getElementById('ytdCalls').value) || 0;
+  const ytdAppts = parseInt(document.getElementById('ytdAppts').value) || 0;
+  const ytdCloses = parseInt(document.getElementById('ytdCloses').value) || 0;
+  const ytdRev = parseFloat(document.getElementById('ytdRev').value) || 0;
+  const week = getWeek();
+  document.getElementById('ytd-week-label').textContent = `week ${week} of 52`;
+
+  const bR = currentView === 'combined' ? bPct : currentView === 'buyer' ? 1 : 0;
+  const sR = 1 - bR;
+  const effComm = (commB * bR + commS * sR) || ((commB + commS) / 2);
+  const blendedComm = commB * bPct + commS * sPct;
+
+  const closes = goal / effComm;
+  const contracts = closes / rl;
+  const appts = contracts / rk;
+  const contacted = appts / ra;
+  const assigned = contacted / rc;
+  window._contacted = contacted; window._appts = appts; window._contracts = contracts; window._closes = closes;
+
+  const bCloses = closes * bR;
+  const sCloses = closes * sR;
+
+  document.getElementById('gc-closes').textContent = fmt(closes);
+  document.getElementById('gc-blended').textContent = fmtD(currentView === 'combined' ? blendedComm : effComm);
+  document.getElementById('gc-b-closes').textContent = fmt(bCloses);
+  document.getElementById('gc-b-rev').textContent = fmtD(bCloses * commB) + ' buyer revenue';
+  document.getElementById('gc-s-closes').textContent = fmt(sCloses);
+  document.getElementById('gc-s-rev').textContent = fmtD(sCloses * commS) + ' seller revenue';
+  document.getElementById('gc-monthly').textContent = fmtD(goal / 12);
+  document.getElementById('gc-monthly-closes').textContent = fmt(closes / 12) + ' closings/month';
+
+  const bPctDisp = Math.round(bPct * 100), sPctDisp = 100 - bPctDisp;
+  document.getElementById('splitBarB').style.width = bPctDisp + '%';
+  document.getElementById('splitBarS').style.width = sPctDisp + '%';
+  document.getElementById('gc-split-text').textContent = `${bPctDisp}% buyers / ${sPctDisp}% sellers`;
+  document.getElementById('leg-b').textContent = `Buyers ${bPctDisp}%`;
+  document.getElementById('leg-s').textContent = `Sellers ${sPctDisp}%`;
+
+  document.getElementById('metricsGrid').innerHTML = `
+    <div class="mc hi"><div class="ml">Calls to answer / yr</div><div class="mv">${fmt(contacted)}</div><div class="ms">${fmt(contacted/260)}/day</div></div>
+    <div class="mc hi"><div class="ml">Leads to assign / yr</div><div class="mv">${fmt(assigned)}</div><div class="ms">company-gen</div></div>
+    <div class="mc"><div class="ml">Appointments / yr</div><div class="mv">${fmt(appts)}</div><div class="ms">${fmt(appts/52)}/wk</div></div>
+    <div class="mc"><div class="ml">Contracts / yr</div><div class="mv">${fmt(contracts)}</div></div>
+    <div class="mc"><div class="ml">Closings / yr</div><div class="mv">${fmt(closes)}</div><div class="ms">${(closes/52).toFixed(1)}/wk</div></div>
+    <div class="mc"><div class="ml">Revenue goal</div><div class="mv">${fmtD(goal)}</div></div>
+  `;
+
+  const fColors = currentView === 'seller'
+    ? ['#97C459','#639922','#3B6D11','#27500A','#173404']
+    : ['#85B7EB','#378ADD','#185FA5','#0C447C','#042C53'];
+  const stages = [
+    {name:'Leads assigned', n:assigned},
+    {name:'Answered / contacted', n:contacted},
+    {name:'Appointments set', n:appts},
+    {name:'Under contract', n:contracts},
+    {name:'Closed', n:closes},
+  ];
+  document.getElementById('funnel').innerHTML = stages.map((s,i) => `
+    <div class="funnel-row">
+      <span class="fn">${s.name}</span>
+      <div class="fb"><div class="ff" style="width:${Math.max(4,(s.n/assigned)*100).toFixed(1)}%;background:${fColors[i]}">${fmt(s.n)}</div></div>
+      <span class="fct">${i > 0 ? Math.round((s.n/stages[i-1].n)*100)+'%' : '—'}</span>
+    </div>`).join('');
+
+  const pG = { calls:contacted*(week/52), appts:appts*(week/52), rev:goal*(week/52), closes:closes*(week/52) };
+  const revPace = pG.rev > 0 ? (ytdRev / pG.rev) : 0;
+  let bt, bb, bc;
+  if (revPace >= 1.05) { bt='Ahead of pace'; bb='#EAF3DE'; bc='#27500A'; }
+  else if (revPace >= 0.9) { bt='On pace'; bb='#E6F1FB'; bc='#0C447C'; }
+  else if (revPace >= 0.7) { bt='Behind pace'; bb='#FAEEDA'; bc='#633806'; }
+  else { bt='Significantly behind'; bb='#FCEBEB'; bc='#791F1F'; }
+  const badge = document.getElementById('paceBadge');
+  badge.textContent = pG.rev > 0 || ytdRev > 0 ? bt : '—';
+  badge.style.background = bb; badge.style.color = bc;
+
+  const pItems = [
+    {label:'Revenue', actual:ytdRev, target:pG.rev, f:v=>fmtD(v)},
+    {label:'Closings', actual:ytdCloses, target:pG.closes, f:v=>fmt(v)},
+    {label:'Calls answered', actual:ytdCalls, target:pG.calls, f:v=>fmt(v)},
+    {label:'Appointments', actual:ytdAppts, target:pG.appts, f:v=>fmt(v)},
+  ];
+  document.getElementById('paceRows').innerHTML = pItems.map(p => {
+    const ratio = p.target > 0 ? Math.min(p.actual / p.target, 1.5) : 0;
+    const dp = p.target > 0 ? Math.round((p.actual / p.target) * 100) : 0;
+    const bc2 = dp >= 105 ? '#639922' : dp >= 90 ? '#378ADD' : dp >= 70 ? '#EF9F27' : '#E24B4A';
+    return `<div class="pri">
+      <div class="prl">${p.label}</div>
+      <div class="prn"><span>${p.f(p.actual)} actual</span><span style="color:#888">${p.f(p.target)} target</span></div>
+      <div class="prb"><div class="prf" style="width:${Math.min(ratio*100,100).toFixed(1)}%;background:${bc2}"></div></div>
+      <div style="font-size:11px;color:#888;margin-top:3px">${dp}% of pace target</div>
+    </div>`;
+  }).join('');
+
+  const curM = getCurMonth();
+  let tHTML = `<thead><tr><th>Month</th><th>Calls target</th><th>Appts target</th><th>Contracts</th><th>Closings</th><th>Revenue target</th><th>Cumulative</th></tr></thead><tbody>`;
+  let cumRev = 0;
+  MONTHS.forEach((m, i) => {
+    const wf = MONTH_DAYS[i] / 365;
+    cumRev += Math.round(goal * wf);
+    const isCur = i === curM;
+    tHTML += `<tr class="${isCur ? 'cur' : ''}">
+      <td>${m}${isCur ? ' ◀' : ''}</td>
+      <td>${Math.ceil(contacted * wf).toLocaleString()}</td>
+      <td>${Math.ceil(appts * wf).toLocaleString()}</td>
+      <td>${Math.ceil(contracts * wf).toLocaleString()}</td>
+      <td>${Math.ceil(closes * wf).toLocaleString()}</td>
+      <td>${fmtD(Math.round(goal * wf))}</td>
+      <td style="color:#888">${fmtD(cumRev)}</td>
+    </tr>`;
+  });
+  tHTML += '</tbody>';
+  document.getElementById('monthTable').innerHTML = tHTML;
+}
+
+try {
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (raw) {
+    const data = JSON.parse(raw);
+    Object.keys(data).forEach(id => { const el = document.getElementById(id); if (el) el.value = data[id]; });
+    ['rc','ra','rk','rl','bSplit'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) document.getElementById(id + 'V').textContent = el.value + '%';
+    });
+    updateAvatar();
+  }
+} catch(e) {}
+calc();
+</script>
+</body>
+</html>
